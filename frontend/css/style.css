@@ -1,3 +1,18 @@
+/* Forma DJR Banner Extra Light Italic
+font-family: forma-djr-banner, sans-serif;
+font-weight: 400;
+font-style: italic;
+
+Forma DJR Banner Extra Light
+font-family: forma-djr-banner, sans-serif;
+font-weight: 400;
+font-style: normal;
+
+Forma DJR Banner Regular
+font-family: forma-djr-banner, sans-serif;
+font-weight: 500;
+font-style: normal; */
+
 canvas {
     position:fixed;
     top:0;
@@ -5,8 +20,30 @@ canvas {
 
 }
 
-.hud{
+body {
+    overflow: hidden; /* Hide scrollbars */
+  }
+
+.c-hud{
     position:fixed;
     top:0;
     left:0;
+}
+
+.c-hud-data {
+    position:fixed;
+    height: 0px;
+    top:32px;
+    width:300px;
+    margin-left: auto;
+    margin-right:40px;
+}
+.c-hud-txt .c-hud-data{
+    position:relative;
+    color:aquamarine;
+    text-align: right;
+    font-size: 40px;
+    font-family: forma-djr-banner, sans-serif;
+    font-weight: 400;
+    font-style: normal;
 }
