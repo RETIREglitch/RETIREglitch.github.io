@@ -12,26 +12,35 @@ renderer.render(scene,camera);
 
 //var domEvents   = new THREEx.DomEvents(camera, renderer.domElement)
 let track;
+
+// lighting
+let pointlight;
+
+// dynamic loading 
 let roadSections = [];
 let buildings;
 let building_pos_l = [];
 building_pos_l.push([-240,-20,50,0]); // done
 building_pos_l.push([-290,24,60,0]); // done
 building_pos_l.push([-210,-80,40,0]); // done
-building_pos_l.push([-220,-60,50,0]); // done
+building_pos_l.push([-220,-70,50,0]); // done
 building_pos_l.push([-440,-76,30,0]); // done
-building_pos_l.push([-200,-20,40,0]); // done
+building_pos_l.push([-200,-40,40,0]); // done
 building_pos_l.push([-290,-80,30,0]); // done
 
 let building_pos_r = [];
 building_pos_r.push([240,-20,50,3.14]); // done
 building_pos_r.push([290,24,60,3.14]); // done
 building_pos_r.push([210,-80,40,3.14]); // done
-building_pos_r.push([220,-60,50,3.14]); // done
+building_pos_r.push([220,-70,50,3.14]); // done
 building_pos_r.push([440,-76,30,3.14]); // done
-building_pos_r.push([200,-20,40,3.14]); // done
+building_pos_r.push([200,-40,40,3.14]); // done
 building_pos_r.push([290,-80,30,3.14]); // done
 
+// finish line: z-pos should be -53965;
+let finish_line;
+
+// bike data
 let bike;
 let bike_z_change = 0;
 let moved_z = 0;
@@ -43,6 +52,7 @@ let random_x_length = Math.random() * 5;
 let bike_y_change = 0;
 let moved_y = 0;
 
+// other data
 let paused = true;
 
 // html data
@@ -128,7 +138,7 @@ class Buildings{
                 building.visible = false;
                 let scalef = building_pos_l[i][2];
                 building.scale.set(scalef, scalef, scalef);
-
+                building.position.z = 1000;
                 scene.add(building);
                 this.buildings_l.push(building);
             })
@@ -138,13 +148,11 @@ class Buildings{
                 building.visible = false;
                 let scalef = building_pos_r[i][2];
                 building.scale.set(scalef, scalef, scalef);
-
+                building.position.z = 1000;
                 scene.add(building);
                 this.buildings_r.push(building);
                 if (i == 6) {
                     this.updateAllBuildings()
-                    this.addRandomBuilding(-200);
-                    this.addRandomBuilding(-400);
                     loadBike("models/bike.obj");
                 }
             })
@@ -167,25 +175,62 @@ class Buildings{
         if (randomInt(0,1) == 1) {
             buildingsArray = this.buildings_r;
         }
+        
 
         let randomValue = randomInt(0,buildingsArray.length-1);
-        console.log(randomValue, buildingsArray.length);
         let building = buildingsArray[randomValue];
+        while (building.position.z < bike.position.z) {
+            console.log("test");
+            buildingsArray = this.buildings_l;
+            if (randomInt(0,1) == 1) {
+                buildingsArray = this.buildings_r;
+            }
+            randomValue = randomInt(0,buildingsArray.length-1);
+            building = buildingsArray[randomValue];
+        }
+        
         building.position.z = z;
         building.visible = true;
-        console.log(building);
+        //console.log(randomValue);
         return;
 
     }
 }
 
+class FinishLine{
+    constructor(){
+        this.z = -30000;//-170810;//-400;//-53965;
+        this.initialize();
+    }
 
-const background = new THREE.TextureLoader().load("img/skybox.png");
-scene.background = background;
+    initialize(){
+        console.log("creating end")
+        var geometry = new THREE.BoxGeometry(4, 160, 4, 1, 1, 1);
+        var texture = new THREE.TextureLoader().load("img/wood_texture.png");
+        var material = new THREE.MeshStandardMaterial({map:texture});
+        this.leftpole = new THREE.Mesh(geometry,material);
 
-const pointlight = new THREE.PointLight(0xFFFFCC);
-pointlight.position.set(0,100,100);
-scene.add(pointlight);
+        scene.add(this.leftpole);
+        this.leftpole.position.y += 0;
+        this.leftpole.position.x -= 100;
+        this.leftpole.position.z = this.z ;
+        this.rightpole = new THREE.Mesh(geometry,material);
+        this.rightpole.position.y += 0;
+        this.rightpole.position.x += 100;
+        this.rightpole.position.z = this.z ;
+        scene.add(this.rightpole);
+
+        geometry = new THREE.BoxGeometry(200, 25, 1, 1, 1, 1);
+        texture = new THREE.TextureLoader().load("img/finishline.png");
+        material = new THREE.MeshStandardMaterial({map:texture});
+        this.flag = new THREE.Mesh(geometry,material);
+        scene.add(this.flag);
+
+        this.flag.position.y += 40
+        this.flag.position.z = this.z ;
+    }
+
+}
 
 // other objects
 function loadBike(model) {
@@ -193,9 +238,11 @@ function loadBike(model) {
     objLoader.load(model, function(obj){
         obj.position.y = -140;
         obj.position.z = -18;
-        //obj.position.z = 150;
+        obj.position.z = -20;
         scene.add(obj);
         bike = obj;
+        buildings.addRandomBuilding(-200);
+        buildings.addRandomBuilding(-400);
     });
 
 }
@@ -246,10 +293,9 @@ function updatePlayer() {
     //player.z += -player.speed/2;
     camera.translateZ(-player.speed/2);
     bike.position.z += -player.speed/2;
-
+    console.log(bike.position.z);
 
     if (roadSections[0].z > bike.position.z+260) {
-        //console.log("loading road section");
         roadSections[0].updateZ(-400*roadSections.length+1);
         let tempPart = roadSections[0];
 
@@ -257,27 +303,25 @@ function updatePlayer() {
             roadSections[i] = roadSections[i+1];
         }
         roadSections[roadSections.length-1] = tempPart;
+        buildings.addRandomBuilding(bike.position.z-1000);
     }
 
-    if (pointlight.position.z > bike.position.z+100) {
-        pointlight.position.z -= 200;
-        //let rc = pseudoRandomColor()
-        //pointlight.color.setHex(rc);
-        //console.log(pointlight);
-        // console.log(rc);
-    }
+    // if (pointlight.position.z > bike.position.z+100) {
+    //     pointlight.position.z -= 200;
+    // }
+    pointlight.position.z = bike.position.z;
 
     const randomBikeX = pseudoRandomX();
     bike.position.x += randomBikeX;
     bike.rotation.y += randomBikeX/200;
     bike.rotation.z += randomBikeX/200;
-    //bike.position.y += pseudoRandomY();
 
-    player.remainingDistance -= player.speed/3600*1000/30;
+    player.remainingDistance = (finish_line.z - bike.position.z)/finish_line.z*1000;
+    // player.remainingDistance -= player.speed/3600*1000/100;
     let displayDistance = player.remainingDistance - player.remainingDistance%1
 
     if (displayDistance <= 0) {
-        console.log('You reached the goal!'); 
+        alert('You reached the goal!'); 
         displayDistance = 0;
     }
     if (htmlDistance) {
@@ -292,18 +336,11 @@ function animate() {
     
     if (!paused) {
         updatePlayer();
-        //timedEvents();
-        window.requestAnimationFrame(render);
+        // window.requestAnimationFrame(render);
     }
 }
 
-// let randomTimeEvent = [Math.round(Math.random()*60  + 40)];
 
-// function timedEvents() {
-//     globalTimer ++;
-//     if (globalTimer%randomTimeEvent[0] == 0) {
-//     }
-// }
 
 function onKeyPressed() {
     document.addEventListener('keydown', (event) => {
@@ -335,36 +372,6 @@ function onKeyPressed() {
     }, false);
 }
 
-const raycaster = new THREE.Raycaster();
-const pointer = new THREE.Vector2();
-
-function onPointerMove( event ) {
-	// calculate pointer position in normalized device coordinates
-	// (-1 to +1) for both components
-	pointer.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-	pointer.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
-
-}
-
-function render() {
-	// update the picking ray with the camera and pointer position
-	raycaster.setFromCamera( pointer, camera );
-
-	// calculate objects intersecting the picking ray
-	const intersects = raycaster.intersectObjects( scene.children );
-
-	for ( let i = 0; i < intersects.length; i ++ ) {
-
-		//intersects[ i ].object.material.color.set( 0xff0000 );
-        // if (intersects[i].object.name.substring(0,6) == "meteor") {
-        //     //console.log(`touching: ${intersects[i].object.name}`);
-        //     removeMeteor(intersects[i].object);
-        // }
-	}
-	renderer.render( scene, camera );
-}
-
-
 // functions only called through the Application
 
 function getSpeed(speed) {
@@ -377,17 +384,27 @@ document.addEventListener("DOMContentLoaded", function () {
     htmlSpeed = document.querySelector(".js-speed");
     htmlDistance = document.querySelector(".js-distance");
     //console.log(htmlSpeed);
-    
-    //window.addEventListener('pointermove', onPointerMove);
-    
-    onKeyPressed();
-    addRoadSections();
-    buildings = new Buildings();
-    animate();
 
     track = document.createElement('audio')
     track.src = "https://files.freemusicarchive.org/storage-freemusicarchive-org/music/WFMU/Broke_For_Free/Directionless_EP/Broke_For_Free_-_01_-_Night_Owl.mp3"
     track.load();
     track.play();
-    
+
+        
+    const background = new THREE.TextureLoader().load("img/skybox.png");
+    scene.background = background;
+
+    pointlight = new THREE.PointLight(0xFFFFCC);
+    pointlight.position.set(0,100,100);
+    scene.add(pointlight);
+    console.log(pointlight);
+    pointlight.decay = 0;
+
+    onKeyPressed();
+    addRoadSections();
+    buildings = new Buildings();
+    finish_line = new FinishLine();
+
+    animate();
+
 });
