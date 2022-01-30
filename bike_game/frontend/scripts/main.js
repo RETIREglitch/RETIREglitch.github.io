@@ -11,87 +11,198 @@ camera.position.setZ(30);
 renderer.render(scene,camera);
 
 //var domEvents   = new THREEx.DomEvents(camera, renderer.domElement)
+let track;
+let roadSections = [];
+let buildings;
+let building_pos_l = [];
+building_pos_l.push([-240,-20,50,0]); // done
+building_pos_l.push([-290,24,60,0]); // done
+building_pos_l.push([-210,-80,40,0]); // done
+building_pos_l.push([-220,-60,50,0]); // done
+building_pos_l.push([-440,-76,30,0]); // done
+building_pos_l.push([-200,-20,40,0]); // done
+building_pos_l.push([-290,-80,30,0]); // done
 
-let torus; 
-let planets = [];
-let paused = false;
-let meteorites = [];
-let globalTimer = 0;
-let base_speed = 20;
+let building_pos_r = [];
+building_pos_r.push([240,-20,50,3.14]); // done
+building_pos_r.push([290,24,60,3.14]); // done
+building_pos_r.push([210,-80,40,3.14]); // done
+building_pos_r.push([220,-60,50,3.14]); // done
+building_pos_r.push([440,-76,30,3.14]); // done
+building_pos_r.push([200,-20,40,3.14]); // done
+building_pos_r.push([290,-80,30,3.14]); // done
+
+let bike;
+let bike_z_change = 0;
+let moved_z = 0;
+
+let direction_x = 1;
+let moved_x = 0;
+let random_x_length = Math.random() * 5;
+
+let bike_y_change = 0;
+let moved_y = 0;
+
+let paused = true;
 
 // html data
 let htmlSpeed;
 let htmlDistance;
-let meteorId = 0;
 
-function addTorus(imgsrc,pos) {
-    const texture = new THREE.TextureLoader().load(imgsrc);
-    var geometry = new THREE.TorusGeometry(12,2,2,100); // inner diameter,outer size,thickness,smoothness
-    var material = new THREE.MeshStandardMaterial({map:texture}); //wireframe:true,{color:0x882233}
-    torus = new THREE.Mesh(geometry,material);
-    torus.position.set(pos[0],pos[1],pos[2]);
-    scene.add(torus);
+// environment
+class RoadSection {
+    constructor(z){
+        this.z = z;
+        this.initialize()
+    }
 
+    initialize(){
+        this.makeRoad()
+        this.makePavement()
+    }
+
+    makeRoad(){
+        var geometry = new THREE.BoxGeometry(200, 1, 400, 1, 1, 1);
+        var texture = new THREE.TextureLoader().load("img/road.png");
+        var material = new THREE.MeshStandardMaterial({map:texture});
+        this.road = new THREE.Mesh(geometry,material);
+        scene.add(this.road);
+        this.road.position.y -= 80;
+        this.road.position.z += this.z;
+    }
+
+    makePavement(){
+        let pavementWidth = 1000;
+        var geometry = new THREE.BoxGeometry(pavementWidth, 12, 400, 1, 1, 1);
+        var texture = new THREE.TextureLoader().load("img/pavement.png");
+        var material = new THREE.MeshStandardMaterial({map:texture});
+        this.leftpavement = new THREE.Mesh(geometry,material);
+        scene.add(this.leftpavement);
+
+        var geometry = new THREE.BoxGeometry(pavementWidth, 12, 400, 1, 1, 1);
+        var texture = new THREE.TextureLoader().load("img/pavement.png");
+        var material = new THREE.MeshStandardMaterial({map:texture});
+        this.rightpavement = new THREE.Mesh(geometry,material);
+        scene.add(this.rightpavement);
+
+        this.leftpavement.position.y -= 80;
+        this.leftpavement.position.x -= pavementWidth/2+100;
+        this.leftpavement.position.z += this.z;
+
+        this.rightpavement.position.y -= 80;
+        this.rightpavement.position.x += pavementWidth/2+100;
+        this.rightpavement.position.z += this.z;
+    }
+
+    updateZ(value){
+        this.z += value;
+        this.road.position.z += value;
+        this.leftpavement.position.z += value;
+        this.rightpavement.position.z += value;
+    } 
 }
 
-function addPlanet(imgsrc,pos){
-    const texture = new THREE.TextureLoader().load(imgsrc);
-    geometry = new THREE.SphereGeometry(9,24,24);
-    material = new THREE.MeshStandardMaterial({map:texture});
-    const newPlanet = new THREE.Mesh(geometry,material);
-    newPlanet.position.set(pos[0],pos[1],pos[2]);
-    planets.push(newPlanet);
-    scene.add(newPlanet);
-    return newPlanet;
+function addRoadSections() {
+    for (let i = 0; i <= 3; i++) {
+        roadSections.push(new RoadSection(i*-400+260));
+    }
 }
 
-let saturn_pos = [0,0,0];
-addTorus("img/saturn_rings.png",saturn_pos);
-addPlanet("img/saturn.png",saturn_pos)
+class Buildings{
+    constructor(){
+        this.buildings_l = [];
+        this.buildings_r = [];
+        this.initialize();
+    }
+    initialize(){
+        this.loadBuildings();
+    }
 
-const gltfLoader = new THREE.GLTFLoader();
-    gltfLoader.load("models/rocket1.glb", (gltf) => {
-    const root = gltf.scene;
-    scene.add(root);
-});
+    loadBuildings(){
+        for (let i = 0; i < 7; i++) {
+            let model = `models/buildings/building${i+1}.glb`;
+            const gltfLoader = new THREE.GLTFLoader();
+            // left side
+            gltfLoader.load(model, (gltf) => {
+                const building = gltf.scene;
+                building.visible = false;
+                let scalef = building_pos_l[i][2];
+                building.scale.set(scalef, scalef, scalef);
 
+                scene.add(building);
+                this.buildings_l.push(building);
+            })
 
+            gltfLoader.load(model, (gltf) => {
+                const building = gltf.scene;
+                building.visible = false;
+                let scalef = building_pos_r[i][2];
+                building.scale.set(scalef, scalef, scalef);
 
-const pointlight = new THREE.PointLight(0xFFFFFF);
-pointlight.position.set(20,200,100);
-scene.add(pointlight);
+                scene.add(building);
+                this.buildings_r.push(building);
+                if (i == 6) {
+                    this.updateAllBuildings()
+                    this.addRandomBuilding(-200);
+                    this.addRandomBuilding(-400);
+                    loadBike("models/bike.obj");
+                }
+            })
+        }
+    }
+    
+    updateAllBuildings() {
+        for (let i = 0; i < 7; i++) {
+            this.buildings_l[i].position.x += building_pos_l[i][0];
+            this.buildings_l[i].position.y += building_pos_l[i][1];
 
-const ambientlight = new THREE.AmbientLight(0xFFFFFF);
-//scene.add(ambientlight);
+            this.buildings_r[i].position.x += building_pos_r[i][0];
+            this.buildings_r[i].position.y += building_pos_r[i][1];
+            this.buildings_r[i].rotation.y += building_pos_r[i][3];
+        }
+    }
 
-function showGrid(){
-    const lighthelper = new THREE.PointLightHelper(pointlight);
-    const gridhelper = new THREE.GridHelper(200,50);
-    scene.add(lighthelper,gridhelper);
+    addRandomBuilding(z){
+        let buildingsArray = this.buildings_l;
+        if (randomInt(0,1) == 1) {
+            buildingsArray = this.buildings_r;
+        }
+
+        let randomValue = randomInt(0,buildingsArray.length-1);
+        console.log(randomValue, buildingsArray.length);
+        let building = buildingsArray[randomValue];
+        building.position.z = z;
+        building.visible = true;
+        console.log(building);
+        return;
+
+    }
 }
-//showGrid();
 
-// const controls = new THREE.OrbitControls(camera,renderer.domElement);
-// //const controls = new THREE.FirstPersonControls(camera,renderer.domElement);
-// controls.movementSpeed = 20.0;
 
-function addStar() {
-    const geometry = new THREE.SphereGeometry(Math.random(0.10,0.8),24,24);
-    const material = new THREE.MeshStandardMaterial({color:0xFFFF99});
-    const star = new THREE.Mesh(geometry,material);
-    const [x,y,z] = Array(3).fill().map(() => THREE.MathUtils.randFloatSpread(1000));
-    star.position.set(x,y,z);
-    scene.add(star);
-}
-
-Array(200).fill().forEach(addStar);
-
-const background = new THREE.TextureLoader().load("img/space3.png");
+const background = new THREE.TextureLoader().load("img/skybox.png");
 scene.background = background;
 
+const pointlight = new THREE.PointLight(0xFFFFCC);
+pointlight.position.set(0,100,100);
+scene.add(pointlight);
+
+// other objects
+function loadBike(model) {
+    const objLoader = new THREE.OBJLoader();
+    objLoader.load(model, function(obj){
+        obj.position.y = -140;
+        obj.position.z = -18;
+        //obj.position.z = 150;
+        scene.add(obj);
+        bike = obj;
+    });
+
+}
+
+// player code
 class Player {
-    constructor(flyspeed,initial_z,initial_x,initial_y,remainingDistance){
-        this.flyspeed = flyspeed;
+    constructor(initial_z,initial_x,initial_y,remainingDistance){
         this.speed = 20;
         this.x = initial_x,
         this.y = initial_y;
@@ -102,223 +213,140 @@ class Player {
     }
 }
 
-let player = new Player(20,200,0,0,1000);
-camera.translateZ(player.z);
+let player = new Player(0,0,0,1000);
 
-const convertedSpeed = function(speed) {
-    player.z -= (speed/40);
-    return -(speed/40);
+function pseudoRandomX() {
+    moved_x += 0.1;
+    if (moved_x >= random_x_length) {
+        if (direction_x == Math.abs(direction_x)) {
+            random_x_length = random(1,6);
+        };
+        direction_x = -direction_x;
+        moved_x = 0;
+    }
+    return 0.1*direction_x;
 }
 
-class Meteor {
-    constructor(damage,y,z) {
-        this.damage = damage;
-        this.y = y;
-        this.z = z;
-        this.createMeteor();
-    }
-
-    createMeteor(){
-        var geometry = new THREE.SphereGeometry(4,5,8);
-        var texture = new THREE.TextureLoader().load("img/meteor.png");
-        var material = new THREE.MeshStandardMaterial({map:texture});
-        this.MeteorObj = new THREE.Mesh(geometry,material);
-        this.MeteorObj.position.y = this.y
-        this.MeteorObj.position.x = this.get_x_position();
-        this.MeteorObj.position.z = this.z;
-        scene.add(this.MeteorObj);
-        this.MeteorObj.name = `meteor${meteorId}`;
-        meteorId ++;
-    }
-
-    get_x_position() {
-        let chance = Math.random();
-        this.initialPos = 400;
-        if (chance < 0.5) {
-            return this.initialPos;
-        }
-        this.initialPos = -this.initialPos;
-        return this.initialPos;
-    }
-
-    moveTo(x,y,z){
-        this.MeteorObj.position.y = Math.max(0,this.MeteorObj.position.y - this.getSpeed(0.0375));
-        let x_diff = (this.MeteorObj.position.x - x);
-        let direction = -(this.initialPos/Math.abs(this.initialPos));
-        if (direction == 1) {
-            this.MeteorObj.position.x = Math.min(0,this.MeteorObj.position.x + direction*(this.getSpeed(0.0825))) ;
-        } else {
-            this.MeteorObj.position.x = Math.max(0, this.MeteorObj.position.x + direction*(this.getSpeed(0.0825)));
-        }
-        let z_diff = (this.MeteorObj.position.z - z);
-        this.MeteorObj.position.z += this.getSpeed(0.1875);
-        this.MeteorObj.rotation.y += 0.1;
-        this.MeteorObj.rotation.z += 0.2;
-
-    }
-
-    getSpeed(initialspeed) {
-        return initialspeed*player.flyspeed;
-    }
-
-    getDistance(x,y,z) {
-        let distance = Math.sqrt(Math.pow(this.MeteorObj.position.x - x,2)+ Math.pow(this.MeteorObj.position.z - z,2));
-        //console.log(distance);
-    }
-
-    HitPlayer(x,y,z){
-        if (Math.abs(this.MeteorObj.position.y - y) == 0) {
-            if (Math.abs(this.MeteorObj.position.x - x) ==  0) {
-                removeMeteor(this.MeteorObj);
-                return true;
-            }
-        }
-        return false;
-    }
-
+function random(min,max) {
+    return Math.random() * (max-min) + min;
 }
 
-function getObjDistance(obj) {
-    let distance = Math.sqrt(Math.pow(obj.position.x - player.x,2)+ Math.pow(obj.position.z - player.z,2));
-    console.log(distance);
+function randomInt(min,max) {
+    return Math.round(random(min,max));
 }
 
-function removeMeteor(object) {
-    let tempMeteorites = [];
-    for (let meteor of meteorites) {
-        if (meteor.MeteorObj.name == object.name) {
-            console.log(`DEBUG: ${object.name} removed from scene.`);
-            continue;
-        }
-        tempMeteorites.push(meteor);
-    }
-    meteorites = tempMeteorites;
-
-    //console.log(object);
-
-    scene.remove(object);
-
+function pseudoRandomColor() {
+    let red = random(0x90,0xFF);
+    let green = random(0x90,0xFF);
+    let blue = random(0x90,0xFF);
+    return red << 16 | green << 8 | blue;
 }
-
-function updateMeteorites() {
-    let tempMeteorites = [];
-    for (let meteor of meteorites) {
-        meteor.moveTo(player.x,player.y,player.z);
-        if (!meteor.HitPlayer(player.x,player.y,player.z)) {
-            tempMeteorites.push(meteor)
-            if (meteor == tempMeteorites[0]) {
-                meteor.getDistance(player.x,player.y,player.z);
-            }
-            continue;
-        }
-        console.log(`Hit Player: ${meteor.MeteorObj.name}`)
-    }
-    meteorites = tempMeteorites;
-}
-
 
 function updatePlayer() {
-    camera.translateZ(convertedSpeed(player.flyspeed));
+    //player.z += -player.speed/2;
+    camera.translateZ(-player.speed/2);
+    bike.position.z += -player.speed/2;
+
+
+    if (roadSections[0].z > bike.position.z+260) {
+        //console.log("loading road section");
+        roadSections[0].updateZ(-400*roadSections.length+1);
+        let tempPart = roadSections[0];
+
+        for (let i = 0; i < roadSections.length-1;i++){
+            roadSections[i] = roadSections[i+1];
+        }
+        roadSections[roadSections.length-1] = tempPart;
+    }
+
+    if (pointlight.position.z > bike.position.z+100) {
+        pointlight.position.z -= 200;
+        //let rc = pseudoRandomColor()
+        //pointlight.color.setHex(rc);
+        //console.log(pointlight);
+        // console.log(rc);
+    }
+
+    const randomBikeX = pseudoRandomX();
+    bike.position.x += randomBikeX;
+    bike.rotation.y += randomBikeX/200;
+    bike.rotation.z += randomBikeX/200;
+    //bike.position.y += pseudoRandomY();
+
     player.remainingDistance -= player.speed/3600*1000/30;
     let displayDistance = player.remainingDistance - player.remainingDistance%1
+
     if (displayDistance <= 0) {
-        console.log('You reached the goal!');
-        
+        console.log('You reached the goal!'); 
+        displayDistance = 0;
     }
     if (htmlDistance) {
         htmlDistance.innerText =  `${displayDistance}m`;
     }
     
 }
-function rotateObjects() {
-    torus.rotation.x += 0.002;
-    //torus.rotation.y += 0.01;
-    torus.rotation.z += 0.002;
-    
-    for (let planet of planets) {
-        planet.rotation.y += 0.002;
-        planet.rotation.z += 0.001;
-    } 
-}
 
 function animate() {
     requestAnimationFrame(animate);
-    rotateObjects();
-
     renderer.render(scene,camera);
     
     if (!paused) {
-        updateMeteorites();
         updatePlayer();
-        timedEvents();
+        //timedEvents();
         window.requestAnimationFrame(render);
     }
 }
 
-let randomTimeEvent = [Math.round(Math.random()*60  + 40)];
+// let randomTimeEvent = [Math.round(Math.random()*60  + 40)];
 
-function timedEvents() {
-    globalTimer ++;
-    if (globalTimer%randomTimeEvent[0] == 0) {
-        console.log(`Spawning new Meteor: ${meteorId}`);
-        meteorites.push(new Meteor(0,180,player.z-1000));
-        randomTimeEvent[0] = Math.round(Math.random()*100  + 40);
-        globalTimer = 0;
-    }
-}
+// function timedEvents() {
+//     globalTimer ++;
+//     if (globalTimer%randomTimeEvent[0] == 0) {
+//     }
+// }
 
 function onKeyPressed() {
-// Add event listener on keydown
-document.addEventListener('keydown', (event) => {
-    var name = event.key;
-    var code = event.code;
-    // Alert the key name and key code on keydown
-    //console.log(`Key pressed ${name} \r\n Key code value: ${code}`);
+    document.addEventListener('keydown', (event) => {
+        var name = event.key;
+        var code = event.code;
+        // Alert the key name and key code on keydown
+        //console.log(`Key pressed ${name} \r\n Key code value: ${code}`);
 
-    if (code == "Space") {
-        paused = !paused;
-        console.log(`paused game ${paused}`);
-        return;
-    }
-    if (code == "ArrowUp") {
-        player.speed ++;
-        htmlSpeed.innerHTML = `${player.speed} km/h`;
-        return;
-    }
-    if (code == "ArrowDown") {
-        player.speed --;
-        htmlSpeed.innerHTML = `${player.speed} km/h`; 
-        return;
-    }
-
-  }, false);
-
+        if (code == "Space") {
+            paused = !paused;
+            console.log(`paused game ${paused}`);
+            if (paused) {
+                track.pause();
+                return;
+            }
+            track.play();
+            return;
+        }
+        if (code == "ArrowUp") {
+            player.speed ++;
+            htmlSpeed.innerHTML = `${player.speed} km/h`;
+            return;
+        }
+        if (code == "ArrowDown") {
+            player.speed --;
+            htmlSpeed.innerHTML = `${player.speed} km/h`; 
+            return;
+        }
+    }, false);
 }
-
-onKeyPressed()
-
-document.addEventListener("DOMContentLoaded", function () {
-    htmlSpeed = document.querySelector(".js-speed");
-    htmlDistance = document.querySelector(".js-distance");
-    console.log(htmlSpeed);
-    
-});
 
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 
 function onPointerMove( event ) {
-
 	// calculate pointer position in normalized device coordinates
 	// (-1 to +1) for both components
-
 	pointer.x = ( event.clientX / window.innerWidth ) * 2 - 1;
 	pointer.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
 
 }
 
 function render() {
-
 	// update the picking ray with the camera and pointer position
 	raycaster.setFromCamera( pointer, camera );
 
@@ -328,20 +356,14 @@ function render() {
 	for ( let i = 0; i < intersects.length; i ++ ) {
 
 		//intersects[ i ].object.material.color.set( 0xff0000 );
-        if (intersects[i].object.name.substring(0,6) == "meteor") {
-            //console.log(`touching: ${intersects[i].object.name}`);
-            removeMeteor(intersects[i].object);
-        }
-        
+        // if (intersects[i].object.name.substring(0,6) == "meteor") {
+        //     //console.log(`touching: ${intersects[i].object.name}`);
+        //     removeMeteor(intersects[i].object);
+        // }
 	}
-
 	renderer.render( scene, camera );
-
 }
 
-window.addEventListener('pointermove', onPointerMove);
-
-animate();
 
 // functions only called through the Application
 
@@ -349,3 +371,23 @@ function getSpeed(speed) {
     player.speed = speed;
     htmlSpeed.innerHTML = `${speed} km/h`;
 }
+
+
+document.addEventListener("DOMContentLoaded", function () {
+    htmlSpeed = document.querySelector(".js-speed");
+    htmlDistance = document.querySelector(".js-distance");
+    //console.log(htmlSpeed);
+    
+    //window.addEventListener('pointermove', onPointerMove);
+    
+    onKeyPressed();
+    addRoadSections();
+    buildings = new Buildings();
+    animate();
+
+    track = document.createElement('audio')
+    track.src = "https://files.freemusicarchive.org/storage-freemusicarchive-org/music/WFMU/Broke_For_Free/Directionless_EP/Broke_For_Free_-_01_-_Night_Owl.mp3"
+    track.load();
+    track.play();
+    
+});

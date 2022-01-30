@@ -2,7 +2,7 @@
 <html>
 	<head>
 	<meta charset="utf-8">
-                <title>Poké3Dex</title>
+                <title>SmartBike Project</title>
                 <link rel="stylesheet" href="css/normalize.css">
                 <link rel="stylesheet" href="css/style.css">
                 <link rel="stylesheet" href="https://use.typekit.net/ckj7rmx.css">
@@ -11,21 +11,16 @@
 	<body>
                 <div>
                         <canvas id="cv"></canvas>
-                        <script type="text/javascript" src="/frontend/scripts/three.js"></script>
+                        <script type="text/javascript" src="./scripts/three.js"></script>
                         <!-- <script type="text/javascript" src="/frontend/scripts/examples/OrbitControls.js"></script> -->
-                        <script type="text/javascript" src="/frontend/scripts/examples/GLTFLoader.js"></script>
-                        <script type="text/javascript" src="/frontend/scripts/main.js" ></script>
-                </div>
-                <div>
-                        <div class="c-hud">
-                                <img src="img/cockpit_2.png">
-                        </div>
-
-                        <div class="c-hud-txt">
-                                <h3 class="c-hud-data c-speed js-speed">20 km/h</h3>
-                                <h3 class="c-hud-data c-distance js-distance">20</h3>
-                        </div>
+                        <script type="text/javascript" src="./scripts/examples/GLTFLoader.js"></script>
+                        <script type="text/javascript" src="./scripts/examples/ObjLoader.js"></script>
+                        <script type="text/javascript" src="./scripts/main.js"></script>
                 </div>
 
+                <div class="c-hud-txt">
+                        <h3 class="c-hud-data c-speed js-speed">20 km/h</h3>
+                        <h3 class="c-hud-data c-distance js-distance">20</h3>
+                </div>
 	</body> 
 </html>
