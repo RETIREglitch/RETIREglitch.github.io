@@ -147,8 +147,8 @@ function addRoadSections() {
 
 class Buildings{
     constructor(){
-        this.buildings_l = [];
-        this.buildings_r = [];
+        this.buildings_l = [0*7];
+        this.buildings_r = [0*7];
         this.initialize();
     }
 
@@ -158,6 +158,8 @@ class Buildings{
 
     loadBuildings(){
         const gltfLoader = new THREE.GLTFLoader();
+        let buildingCount = 0;
+
         for (let i = 0; i < 7; i++) {
             let model = `models/buildings/building${i+1}.glb`;
             // left side
@@ -167,7 +169,7 @@ class Buildings{
                 building.scale.set(scalef, scalef, scalef);
                 building.position.z = 1000;
                 scene.add(building);
-                this.buildings_l.push(building);
+                this.buildings_l[i] = building;
             })
 
             gltfLoader.load(model, (gltf) => {
@@ -176,8 +178,9 @@ class Buildings{
                 building.scale.set(scalef, scalef, scalef);
                 building.position.z = 1000;
                 scene.add(building);
-                this.buildings_r.push(building);
-                if (i == 6) {
+                this.buildings_r[i] = building;
+                buildingCount++;
+                if (buildingCount == 7) {
                     this.updateAllBuildings();
                     folliage = new Folliage();
                 }
